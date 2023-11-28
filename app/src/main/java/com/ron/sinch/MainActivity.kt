@@ -44,10 +44,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun initListners() {
         binding.btnVoiceCall.setOnClickListener {
-            RonSinch(this).placeVoiceCall(binding.etTargetID.text.toString())
+            RonSinch(this).placeVoiceCall(binding.etTargetID.text.toString(), seconds = 111)
         }
         binding.btnVideoCall.setOnClickListener {
-            RonSinch(this).placeVideoCall(binding.etTargetID.text.toString())
+            RonSinch(this).placeVideoCall(binding.etTargetID.text.toString(), seconds = 111)
         }
     }
 

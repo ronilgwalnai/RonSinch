@@ -32,6 +32,8 @@ interface IConstants {
         const val type = "callType"
         const val caller = "caller"
         const val callerID = "callerID"
+        const val min = "min"
+        const val seconds = "seconds"
     }
 
 }

@@ -125,18 +125,30 @@ class RonSinch(private val context: Context) {
     }
 
 
-    fun placeVoiceCall(callerID: String) {
+    fun placeVoiceCall(callerID: String, min: Int? = null, seconds: Int? = null) {
         context.startActivity(Intent(context, RonSinchCallActivity::class.java).apply {
             putExtra(IConstants.Calls.type, IConstants.Calls.audioCall)
             putExtra(IConstants.Calls.callerID, callerID)
+            seconds?.let {
+                putExtra(IConstants.Calls.seconds, it)
+            }
+            min?.let {
+                putExtra(IConstants.Calls.min, it)
+            }
             putExtra(IConstants.Calls.caller, true)
         })
     }
 
-    fun placeVideoCall(callerID: String) {
+    fun placeVideoCall(callerID: String, min: Int? = null, seconds: Int? = null) {
         context.startActivity(Intent(context, RonSinchCallActivity::class.java).apply {
             putExtra(IConstants.Calls.type, IConstants.Calls.videoCall)
             putExtra(IConstants.Calls.callerID, callerID)
+            seconds?.let {
+                putExtra(IConstants.Calls.seconds, it)
+            }
+            min?.let {
+                putExtra(IConstants.Calls.min, it)
+            }
             putExtra(IConstants.Calls.caller, true)
         })
     }
