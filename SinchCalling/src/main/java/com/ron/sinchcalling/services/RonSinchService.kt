@@ -9,11 +9,11 @@ import android.os.Build
 import android.os.IBinder
 import com.ron.sinchcalling.activities.RonSinchCallActivity
 import com.ron.sinchcalling.callbacks.RonSinchClientListener
-import com.ron.sinchcalling.helpers.IConstants
+import com.ron.sinchcalling.helpers.RonConstants
 import com.ron.sinchcalling.helpers.RonJwt
 import com.ron.sinchcalling.helpers.RonNotificationUtils
-import com.ron.sinchcalling.helpers.SharedPrefUtils
-import com.ron.sinchcalling.models.UserModel
+import com.ron.sinchcalling.helpers.RonSharedPrefUtils
+import com.ron.sinchcalling.models.RonSinchUserModel
 import com.sinch.android.rtc.ClientRegistration
 import com.sinch.android.rtc.PushConfiguration
 import com.sinch.android.rtc.SinchClient
@@ -23,12 +23,14 @@ import com.sinch.android.rtc.calling.Call
 import com.sinch.android.rtc.calling.CallController
 import com.sinch.android.rtc.calling.CallControllerListener
 
+
 @SuppressLint("AnnotateVersionCheck")
-class RonSinchService : Service() {
+internal class RonSinchService : Service() {
     private var sinchClientInstance: SinchClient? = null
     private var ronSinchClientListener: RonSinchClientListener? = null
-    private val preferences by lazy { SharedPrefUtils(this) }
-    private val model: UserModel? by lazy { preferences.getUserModel() }
+
+    private val preferences by lazy { RonSharedPrefUtils(this) }
+    private val model: RonSinchUserModel? by lazy { preferences.getUserModel() }
     private val systemVersionDisallowsExplicitActivityStart: Boolean get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
 
     override fun onBind(p0: Intent?): IBinder {
@@ -79,8 +81,8 @@ class RonSinchService : Service() {
         }
 
         override fun onClientStarted(client: SinchClient) {
-            val tempIntent = Intent(IConstants.Broadcast.connectionEstablished)
-            tempIntent.putExtra(IConstants.Broadcast.type, IConstants.Broadcast.clientStarted)
+            val tempIntent = Intent(RonConstants.Broadcast.connectionEstablished)
+            tempIntent.putExtra(RonConstants.Broadcast.type, RonConstants.Broadcast.clientStarted)
             sendBroadcast(tempIntent)
             ronSinchClientListener?.onClientStarted()
         }
@@ -125,33 +127,35 @@ class RonSinchService : Service() {
 
     private val callController = object : CallControllerListener {
         override fun onIncomingCall(callController: CallController, call: Call) {
+            RonNotificationUtils.stopRingTone()
+            val notifications = RonNotificationUtils(this@RonSinchService)
+            RonNotificationUtils.playRingTone()
             val callType = if (call.details.isVideoOffered) {
-                IConstants.Calls.videoCall
+                RonConstants.Calls.videoCall
             } else {
-                IConstants.Calls.audioCall
+                RonConstants.Calls.audioCall
 
             }
             val mainActivityIntent =
                 Intent(this@RonSinchService, RonSinchCallActivity::class.java).apply {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                    putExtra(IConstants.Calls.callerID, call.callId)
-                    putExtra(IConstants.Calls.caller, false)
-                    putExtra(IConstants.Calls.type, callType)
+                    putExtra(RonConstants.Calls.callerID, call.callId)
+                    putExtra(RonConstants.Calls.caller, false)
+                    putExtra(RonConstants.Calls.type, callType)
 
                 }
             if (systemVersionDisallowsExplicitActivityStart && !checkIfInForeground()) {
-                RonNotificationUtils(this@RonSinchService).createNotification(
+                notifications.createNotification(
                     call,
                     mainActivityIntent
                 )
-
             } else {
                 startActivity(mainActivityIntent)
-                val tempIntent = Intent(IConstants.Broadcast.connectionEstablished)
+                val tempIntent = Intent(RonConstants.Broadcast.connectionEstablished)
                 tempIntent.putExtra(
-                    IConstants.Broadcast.type,
-                    IConstants.Broadcast.incomingCall
+                    RonConstants.Broadcast.type,
+                    RonConstants.Broadcast.incomingCall
                 )
                 sendBroadcast(tempIntent)
             }
@@ -172,6 +176,7 @@ class RonSinchService : Service() {
     override fun onDestroy() {
         if (sinchClientInstance != null && sinchClientInstance?.isStarted == true) {
             sinchClientInstance?.terminateGracefully()
+            stopSelf()
         }
         super.onDestroy()
     }
@@ -184,5 +189,6 @@ class RonSinchService : Service() {
             appProcess.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND && appProcess.processName == packageName
         }
     }
+
 
 }

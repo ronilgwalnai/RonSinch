@@ -1,13 +1,19 @@
 package com.ron.sinch
 
+import android.app.Activity
 import android.content.SharedPreferences
+import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.widget.TextView
+import androidx.activity.result.ActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import com.google.firebase.messaging.FirebaseMessaging
 import com.ron.sinch.databinding.ActivityMainBinding
 import com.ron.sinchcalling.RonSinch
-import com.ron.sinchcalling.models.UserModel
+import com.ron.sinchcalling.models.RonSinchCallResult
+import com.ron.sinchcalling.models.RonSinchUserModel
 import java.util.Random
 
 class MainActivity : AppCompatActivity() {
@@ -17,16 +23,13 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(binding.root)
-        //        SDKManager.sharedInstance().create(this.getApplication());
         sp = getSharedPreferences("offline", MODE_PRIVATE)
-
         val yourUserID = findViewById<TextView>(R.id.your_user_id)
         val userID: String? = getUserId()
         initListners()
-
         FirebaseMessaging.getInstance().token.addOnSuccessListener {
             RonSinch(this).registerUser(
-                UserModel(
+                RonSinchUserModel(
                     secret = "yKEcNvop6UaLec7WIJii5g==",
                     userID = userID ?: "",
                     fcmSenderID = "873551401245",
@@ -44,7 +47,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun initListners() {
         binding.btnVoiceCall.setOnClickListener {
-            RonSinch(this).placeVoiceCall(binding.etTargetID.text.toString(), seconds = 111)
+            RonSinch(this).placeVoiceCall(
+                binding.etTargetID.text.toString(),
+                launcher = launcher,
+                seconds = 11
+            )
         }
         binding.btnVideoCall.setOnClickListener {
             RonSinch(this).placeVideoCall(binding.etTargetID.text.toString(), seconds = 111)
@@ -78,6 +85,23 @@ class MainActivity : AppCompatActivity() {
         } else {
             spValue
         }
+    }
+
+
+    private val launcher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result: ActivityResult ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val data = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                result.data?.getSerializableExtra("result", RonSinchCallResult::class.java)
+            } else {
+                result.data?.getSerializableExtra("result") as RonSinchCallResult
+            }
+
+            Log.e("RonSinchCallResul", ": $data")
+        }
+
+
     }
 
 }

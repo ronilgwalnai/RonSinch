@@ -5,10 +5,10 @@ import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.google.gson.Gson
-import com.ron.sinchcalling.models.UserModel
+import com.ron.sinchcalling.models.RonSinchUserModel
 
 
-class SharedPrefUtils(context: Context) {
+internal class RonSharedPrefUtils(context: Context) {
     // Creates  the key to encrypt and decrypt.
     private var masterKeyAlias = MasterKey.Builder(context, MasterKey.DEFAULT_MASTER_KEY_ALIAS)
         .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
@@ -27,7 +27,7 @@ class SharedPrefUtils(context: Context) {
         mSharedPreferencesEditor.apply()
     }
 
-    fun setValue(key: String, value: Any?) {
+     fun setValue(key: String, value: Any?) {
         when (value) {
             is Int? -> {
                 mSharedPreferencesEditor.putInt(key, value!!)
@@ -114,18 +114,18 @@ class SharedPrefUtils(context: Context) {
         mSharedPreferencesEditor.clear().apply()
     }
 
-    fun setUserModel(model: UserModel?) {
+    fun setUserModel(model: RonSinchUserModel?) {
         val gson = Gson()
         val json: String = gson.toJson(model)
-        mSharedPreferencesEditor.putString(IConstants.Preferences.userModel, json)
+        mSharedPreferencesEditor.putString(RonConstants.Preferences.userModel, json)
         mSharedPreferencesEditor.apply()
     }
 
-    fun getUserModel(): UserModel? {
+    fun getUserModel(): RonSinchUserModel? {
         val gson = Gson()
-        val json = mSharedPreferences.getString(IConstants.Preferences.userModel, null)
+        val json = mSharedPreferences.getString(RonConstants.Preferences.userModel, null)
         return if (json != null) {
-            gson.fromJson(json, UserModel::class.java)
+            gson.fromJson(json, RonSinchUserModel::class.java)
         } else {
             null
         }

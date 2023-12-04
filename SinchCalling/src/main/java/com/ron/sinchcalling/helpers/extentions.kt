@@ -1,8 +1,11 @@
 package com.ron.sinchcalling.helpers
 
+import android.content.Context
+import android.media.AudioManager
+import android.media.AudioManager.OnAudioFocusChangeListener
 import android.view.View
 
-fun String.usernameFromCall(): String {
+internal fun String.usernameFromCall(): String {
     val name =
         try {
             val tempList = this.split("|")
@@ -20,9 +23,11 @@ fun String.usernameFromCall(): String {
 }
 
 
-fun View.visible(value: Boolean) = if (value) {
+internal fun View.ronVisible(value: Boolean) = if (value) {
     this.visibility = View.VISIBLE
 } else {
     this.visibility = View.GONE
 
 }
+
+

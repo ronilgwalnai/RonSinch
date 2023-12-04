@@ -7,19 +7,30 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import android.media.Ringtone
+import android.media.RingtoneManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.ron.sinchcalling.R
 import com.sinch.android.rtc.calling.Call
 import java.util.Date
 
-class RonNotificationUtils(private val context: Context) {
+internal class RonNotificationUtils(private val context: Context) {
+    private val ringtoneUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+
+    init {
+        ringtoneManager = RingtoneManager.getRingtone(context.applicationContext, ringtoneUri)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            ringtoneManager?.isLooping = true
+        }
+    }
+
     private val notificationManager: NotificationManager get() = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     fun createNotification(
         call: Call,
         baseIntent: Intent
     ): Notification {
-        val model = SharedPrefUtils(context).getUserModel()
+        val model = RonSharedPrefUtils(context).getUserModel()
         val logo: Int
         val title =
             if (call.details.isVideoOffered) {
@@ -31,16 +42,15 @@ class RonNotificationUtils(private val context: Context) {
                 context.getString(R.string.incoming_call_notification_title)
             }
         createNotificationChannelIfNeeded()
-        call.addCallListener(NotificationCancellationListener(notificationManager))
+        call.addCallListener(RonNotificationCancellationListener(notificationManager))
 
         return NotificationCompat.Builder(
             context,
-            this.context.packageName + IConstants.NotificationConstants.DEF_CHANNEL_ID
+            this.context.packageName + RonConstants.NotificationConstants.DEF_CHANNEL_ID
         )
             .setContentTitle(title)
             .setContentText(call.remoteUserId.usernameFromCall())
             .setSmallIcon(logo)
-//            .setSmallIcon(R.drawable.ic_user)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setCategory(NotificationCompat.CATEGORY_CALL).setContentIntent(
                 createNotificationPendingIntent(
@@ -54,13 +64,13 @@ class RonNotificationUtils(private val context: Context) {
                 R.drawable.button_accept,
                 model?.acceptButton ?: context.getString(R.string.hint_accept),
                 createNotificationPendingIntent(baseIntent.apply {
-                    putExtra(IConstants.NotificationConstants.actionButtons, true)
+                    putExtra(RonConstants.NotificationConstants.actionButtons, true)
                 })
             ).addAction(
                 R.drawable.button_decline,
                 model?.rejectButton ?: context.getString(R.string.hint_reject),
                 createNotificationPendingIntent(baseIntent.apply {
-                    putExtra(IConstants.NotificationConstants.actionButtons, false)
+                    putExtra(RonConstants.NotificationConstants.actionButtons, false)
                 })
             ).setOngoing(true).build().apply {
                 flags = flags or Notification.FLAG_INSISTENT
@@ -72,17 +82,17 @@ class RonNotificationUtils(private val context: Context) {
 
     private fun createNotificationChannelIfNeeded() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || notificationManager.getNotificationChannel(
-                this.context.packageName + IConstants.NotificationConstants.DEF_CHANNEL_ID
+                this.context.packageName + RonConstants.NotificationConstants.DEF_CHANNEL_ID
             ) != null
         ) {
             return
         }
         NotificationChannel(
-            this.context.packageName + IConstants.NotificationConstants.DEF_CHANNEL_ID,
-            IConstants.NotificationConstants.DEF_CHANNEL_ID,
+            this.context.packageName + RonConstants.NotificationConstants.DEF_CHANNEL_ID,
+            RonConstants.NotificationConstants.DEF_CHANNEL_ID,
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
-            description = IConstants.NotificationConstants.DEF_CHANNEL_DESC
+            description = RonConstants.NotificationConstants.DEF_CHANNEL_DESC
             lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             shouldVibrate()
             shouldShowLights()
@@ -110,5 +120,15 @@ class RonNotificationUtils(private val context: Context) {
             )
         }
 
+    companion object {
+        private var ringtoneManager: Ringtone? = null
 
+        fun playRingTone() {
+            ringtoneManager?.play()
+        }
+
+        fun stopRingTone() {
+            ringtoneManager?.stop()
+        }
+    }
 }

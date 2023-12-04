@@ -1,25 +1,34 @@
 package com.ron.sinchcalling.activities
 
+import android.Manifest
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.ServiceConnection
+import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.lifecycle.MutableLiveData
 import com.ron.sinchcalling.R
 import com.ron.sinchcalling.databinding.ActivityRonSinchCallBinding
-import com.ron.sinchcalling.helpers.IConstants
+import com.ron.sinchcalling.helpers.RonConstants
+import com.ron.sinchcalling.helpers.RonNotificationUtils
+import com.ron.sinchcalling.helpers.RonProximitySensor
+import com.ron.sinchcalling.helpers.ronVisible
 import com.ron.sinchcalling.helpers.usernameFromCall
-import com.ron.sinchcalling.helpers.visible
+import com.ron.sinchcalling.models.RonSinchCallResult
 import com.ron.sinchcalling.services.RonSinchService
 import com.sinch.android.rtc.SinchClient
 import com.sinch.android.rtc.calling.Call
@@ -30,43 +39,53 @@ import com.sinch.android.rtc.video.VideoController
 import com.sinch.android.rtc.video.VideoScalingType
 
 
-class RonSinchCallActivity : AppCompatActivity() {
+internal class RonSinchCallActivity : AppCompatActivity() {
     private var seconds: Int? = null
     private var minutes: Int? = null
     private var timeProvided: Int? = null
+    private var resultModel = RonSinchCallResult()
+    private lateinit var screenManager: RonProximitySensor
+
+    private var permissionStatus: MutableLiveData<Boolean> = MutableLiveData()
     private val callType by lazy {
-        intent.getStringExtra(IConstants.Calls.type) ?: IConstants.Calls.audioCall
+        intent.getStringExtra(RonConstants.Calls.type) ?: RonConstants.Calls.audioCall
     }
     private var speakerEnabled = false
     private var onMute = false
     private var actionButtons: Boolean? = null
-    private val callerID by lazy { intent.getStringExtra(IConstants.Calls.callerID) }
-    val caller by lazy { intent.getBooleanExtra(IConstants.Calls.caller, false) }
+    private val callerID by lazy { intent.getStringExtra(RonConstants.Calls.callerID) }
+    private val caller by lazy { intent.getBooleanExtra(RonConstants.Calls.caller, false) }
     private var sinchClient: SinchClient? = null
     private var ongoingCall: Call? = null
     private val binding by lazy { ActivityRonSinchCallBinding.inflate(layoutInflater) }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(binding.root)
-        if (intent.hasExtra(IConstants.NotificationConstants.actionButtons)) {
+        screenManager = RonProximitySensor(this)
+        checkPermissions()
+        if (intent.hasExtra(RonConstants.NotificationConstants.actionButtons)) {
             actionButtons =
-                intent.getBooleanExtra(IConstants.NotificationConstants.actionButtons, true)
+                intent.getBooleanExtra(RonConstants.NotificationConstants.actionButtons, true)
         }
-        if (intent.hasExtra(IConstants.Calls.min)) {
-            minutes = intent.getIntExtra(IConstants.Calls.min, 0)
+        if (intent.hasExtra(RonConstants.Calls.min)) {
+            minutes = intent.getIntExtra(RonConstants.Calls.min, 0)
         }
-        if (intent.hasExtra(IConstants.Calls.seconds)) {
-            seconds = intent.getIntExtra(IConstants.Calls.seconds, 0)
+        if (intent.hasExtra(RonConstants.Calls.seconds)) {
+            seconds = intent.getIntExtra(RonConstants.Calls.seconds, 0)
         }
         timeProvided = (seconds ?: 0) + ((minutes ?: 0) * 60)
 
 
         if (sinchClient == null) {
-            bindService(
-                Intent(application, RonSinchService::class.java),
-                serviceConnector,
-                Context.BIND_AUTO_CREATE
-            )
+            permissionStatus.observe(this@RonSinchCallActivity) {
+                if (it) {
+                    bindService(
+                        Intent(application, RonSinchService::class.java),
+                        serviceConnector,
+                        Context.BIND_AUTO_CREATE
+                    )
+                }
+            }
         }
         binding.imgRejectCall.setOnClickListener {
             rejectCall()
@@ -81,6 +100,7 @@ class RonSinchCallActivity : AppCompatActivity() {
             handelSpeaker()
         }
         binding.mute.setOnClickListener {
+
             handelMute()
         }
     }
@@ -100,9 +120,11 @@ class RonSinchCallActivity : AppCompatActivity() {
 
     private fun handelSpeaker() {
         if (speakerEnabled) {
+            screenManager.releaseWakeLock()
             sinchClient?.audioController?.enableSpeaker()
             binding.speaker.backgroundTintList = enableColorStateList
         } else {
+            screenManager.acquireWakeLock()
             sinchClient?.audioController?.disableSpeaker()
             binding.speaker.backgroundTintList = disableColorStateList
         }
@@ -124,18 +146,19 @@ class RonSinchCallActivity : AppCompatActivity() {
 
 
     private fun establishCall(id: String?) {
+
         id?.let {
-            binding.actionsLayout.visible(true)
-            binding.bottomLayout.visible(false)
+            binding.actionsLayout.ronVisible(true)
+            binding.bottomLayout.ronVisible(false)
             binding.callState.text = "Dialling call"
             binding.callerName.text = it.usernameFromCall()
             when (callType) {
-                IConstants.Calls.videoCall -> {
+                RonConstants.Calls.videoCall -> {
                     ongoingCall = sinchClient?.callController?.callUser(it, MediaConstraints(true))
                     ongoingCall?.addCallListener(ongoingVideoCallListener)
                 }
 
-                IConstants.Calls.audioCall -> {
+                RonConstants.Calls.audioCall -> {
                     ongoingCall = sinchClient?.callController?.callUser(it, MediaConstraints(false))
                     ongoingCall?.addCallListener(ongoingVoiceCallListener)
                 }
@@ -145,6 +168,8 @@ class RonSinchCallActivity : AppCompatActivity() {
                     ongoingCall?.addCallListener(ongoingVoiceCallListener)
                 }
             }
+            onMute = true
+            handelMute()
         }
     }
 
@@ -155,9 +180,9 @@ class RonSinchCallActivity : AppCompatActivity() {
         }
         ongoingCall = sinchClient?.callController?.getCall(callerID ?: "")
         if (!caller) {
-            binding.bottomLayout.visible(true)
+            binding.bottomLayout.ronVisible(true)
         }
-        binding.actionsLayout.visible(false)
+        binding.actionsLayout.ronVisible(false)
         if (actionButtons == true) {
             acceptCall()
         } else if (actionButtons == false) {
@@ -166,7 +191,7 @@ class RonSinchCallActivity : AppCompatActivity() {
         binding.callerName.text = ongoingCall?.remoteUserId?.usernameFromCall()
         binding.callState.text = callType
         if (ongoingCall?.details?.isVideoOffered == true) {
-            binding.audioInfoLayout.visible(true)
+            binding.audioInfoLayout.ronVisible(true)
             ongoingCall?.addCallListener(ongoingVideoCallListener)
         } else {
             ongoingCall?.addCallListener(ongoingVoiceCallListener)
@@ -174,17 +199,26 @@ class RonSinchCallActivity : AppCompatActivity() {
     }
 
     private fun rejectCall() {
+        if (caller) {
+            resultModel.callEndBy = RonConstants.UserType.caller
+        } else {
+            resultModel.callEndBy = RonConstants.UserType.receiver
+        }
+        RonNotificationUtils.stopRingTone()
         ongoingCall?.hangup()
     }
 
     private fun acceptCall() {
+        RonNotificationUtils.stopRingTone()
+        onMute = true
+        handelMute()
         ongoingCall?.answer()
     }
 
 
     override fun onStart() {
         super.onStart()
-        val intentFilter = IntentFilter(IConstants.Broadcast.connectionEstablished)
+        val intentFilter = IntentFilter(RonConstants.Broadcast.connectionEstablished)
         registerReceiver(broadcastReceiver, intentFilter)
     }
 
@@ -199,9 +233,12 @@ class RonSinchCallActivity : AppCompatActivity() {
 
     private val broadcastReceiver: BroadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            if (intent.hasExtra(IConstants.Broadcast.type)) {
-                Log.e("onReceive", ": ")
-                establishCall(callerID)
+            if (intent.hasExtra(RonConstants.Broadcast.type)) {
+                permissionStatus.observe(this@RonSinchCallActivity) {
+                    if (it) {
+                        establishCall(callerID)
+                    }
+                }
             }
         }
     }
@@ -213,7 +250,13 @@ class RonSinchCallActivity : AppCompatActivity() {
     }
 
     fun disconnectService() {
-
+        binding.duration.ronVisible(false)
+        binding.callState.text = getString(R.string.call_ended)
+        screenManager.releaseWakeLock()
+        RonNotificationUtils.stopRingTone()
+        setResult(Activity.RESULT_OK, Intent().also {
+            it.putExtra("result", resultModel)
+        })
         finishAndRemoveTask()
 
     }
@@ -226,6 +269,7 @@ class RonSinchCallActivity : AppCompatActivity() {
                 sinchClient = p1.sinchClient
                 if (sinchClient?.isStarted == true && caller) {
                     establishCall(callerID)
+
                 } else {
                     startListeningIncomingCall()
                 }
@@ -239,17 +283,17 @@ class RonSinchCallActivity : AppCompatActivity() {
     }
 
     private fun handelUI() {
-        if (callType == IConstants.Calls.audioCall) {
+        if (callType == RonConstants.Calls.audioCall) {
             speakerEnabled = false
-            binding.audioInfoLayout.visible(true)
-            binding.localView.visible(false)
-            binding.remoteView.visible(false)
+            binding.audioInfoLayout.ronVisible(true)
+            binding.localView.ronVisible(false)
+            binding.remoteView.ronVisible(false)
         } else {
-            binding.speaker.visible(false)
+            binding.speaker.ronVisible(false)
             speakerEnabled = true
             binding.imgAcceptCall.setImageResource(R.drawable.ic_video_answer_lib)
-            binding.localView.visible(true)
-            binding.remoteView.visible(true)
+            binding.localView.ronVisible(true)
+            binding.remoteView.ronVisible(true)
         }
         handelSpeaker()
     }
@@ -259,24 +303,23 @@ class RonSinchCallActivity : AppCompatActivity() {
         override fun onCallProgressing(p0: Call) {
             binding.callerName.text = "${ongoingCall?.remoteUserId?.usernameFromCall()}"
             binding.callState.text = getString(R.string.ringing)
-            binding.duration.visible(false)
+            binding.duration.ronVisible(false)
 
 
         }
 
         override fun onCallEstablished(p0: Call) {
+            RonNotificationUtils.stopRingTone()
             binding.callState.text = getString(R.string.connected)
-            binding.bottomLayout.visible(false)
-            binding.actionsLayout.visible(true)
-            binding.duration.visible(true)
+            binding.bottomLayout.ronVisible(false)
+            binding.actionsLayout.ronVisible(true)
+            binding.duration.ronVisible(true)
             startCallTimer()
 
         }
 
         override fun onCallEnded(p0: Call) {
-            binding.callState.text = getString(R.string.call_ended)
             disconnectService()
-            binding.duration.visible(false)
 
         }
 
@@ -285,22 +328,20 @@ class RonSinchCallActivity : AppCompatActivity() {
     private val ongoingVideoCallListener = object : VideoCallListener {
         override fun onCallProgressing(p0: Call) {
             binding.callerName.text = "${ongoingCall?.remoteUserId?.usernameFromCall()}"
-            binding.audioInfoLayout.visible(true)
+            binding.audioInfoLayout.ronVisible(true)
             binding.callState.text = getString(R.string.ringing)
         }
 
         override fun onCallEstablished(p0: Call) {
             sinchClient?.audioController?.enableSpeaker()
-            binding.bottomLayout.visible(false)
-            binding.actionsLayout.visible(true)
-            binding.audioInfoLayout.visible(false)
+            binding.bottomLayout.ronVisible(false)
+            binding.actionsLayout.ronVisible(true)
+            binding.audioInfoLayout.ronVisible(false)
             startCallTimer()
         }
 
         override fun onCallEnded(p0: Call) {
-            binding.audioInfoLayout.visible(true)
-            binding.duration.visible(false)
-            binding.callState.text = getString(R.string.call_ended)
+            binding.audioInfoLayout.ronVisible(true)
             binding.localView.removeAllViews()
             binding.remoteView.removeAllViews()
             disconnectService()
@@ -311,8 +352,8 @@ class RonSinchCallActivity : AppCompatActivity() {
         override fun onVideoTrackAdded(p0: Call) {
             val vc: VideoController? = sinchClient?.videoController
             vc?.let {
-                binding.localView.visible(true)
-                binding.remoteView.visible(true)
+                binding.localView.ronVisible(true)
+                binding.remoteView.ronVisible(true)
                 binding.localView.addView(it.localView)
                 binding.remoteView.addView(it.remoteView)
                 it.setResizeBehaviour(VideoScalingType.ASPECT_FILL)
@@ -334,7 +375,7 @@ class RonSinchCallActivity : AppCompatActivity() {
         callRunnableHandler = object : Runnable {
             override fun run() {
                 ongoingCall?.details?.duration?.let {
-                    binding.duration.text = "Sec : $it"
+                    resultModel.callDurationInSec = it
                     splitToComponentTimes(it)
                     if (timeProvided != null && (timeProvided ?: 0) > 1) {
                         val counter = timeProvided!! - it
@@ -352,6 +393,7 @@ class RonSinchCallActivity : AppCompatActivity() {
         }
     }
 
+    @SuppressLint("SetTextI18n")
     fun splitToComponentTimes(counter: Int) {
         val longVal: Int = counter
         val hours = longVal / 3600
@@ -360,12 +402,82 @@ class RonSinchCallActivity : AppCompatActivity() {
         remainder -= minutes * 60
         val secs = remainder
         if (hours > 0) {
-            binding.duration.text = "$hours:$minutes:$secs"
+            binding.duration.text =
+                "${String.format("%02d", hours)}:${
+                    String.format(
+                        "%02d",
+                        minutes
+                    )
+                }:${String.format("%02d", secs)}"
         } else if (minutes > 0) {
-            binding.duration.text = "$minutes:$secs"
+            binding.duration.text =
+                "${String.format("%02d", minutes)}:${String.format("%02d", secs)}"
+
         } else {
-            binding.duration.text = "0:$secs"
+//            binding.duration.text = "0:$secs"
+            binding.duration.text = String.format("00:%02d", secs)
         }
+    }
+
+    private fun checkPermissions() {
+        val permissions = if (Build.VERSION.SDK_INT >= 33) {
+            arrayOf(
+                Manifest.permission.RECORD_AUDIO,
+                Manifest.permission.CAMERA,
+                Manifest.permission.READ_PHONE_STATE,
+                Manifest.permission.POST_NOTIFICATIONS
+            )
+        } else {
+            arrayOf(
+                Manifest.permission.RECORD_AUDIO,
+                Manifest.permission.CAMERA,
+                Manifest.permission.READ_PHONE_STATE
+            )
+        }
+        if (!hasPermissions(this, *permissions)) {
+            ActivityCompat.requestPermissions(
+                this,
+                permissions,
+                1000
+            )
+        } else {
+            permissionStatus.postValue(true)
+        }
+    }
+
+    private fun hasPermissions(context: Context?, vararg permissions: String): Boolean {
+        if (context != null) {
+            for (permission in permissions) {
+                if (ActivityCompat.checkSelfPermission(
+                        context,
+                        permission
+                    ) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    return false
+                }
+            }
+        }
+        return true
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 1000) {
+            if (hasPermissions(this, *permissions)) {
+                permissionStatus.postValue(true)
+            } else {
+                permissionStatus.postValue(false)
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        rejectCall()
+        super.onDestroy()
     }
 
 }

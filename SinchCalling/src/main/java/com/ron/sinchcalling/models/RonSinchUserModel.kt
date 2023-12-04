@@ -1,10 +1,8 @@
 package com.ron.sinchcalling.models
 
-import android.provider.Settings.Global.getString
-import com.ron.sinchcalling.R
 import java.io.Serializable
 
-data class UserModel(
+data class RonSinchUserModel(
     val secret: String,
     val key: String,
     val environment: String,
