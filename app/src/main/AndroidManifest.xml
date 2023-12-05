@@ -22,7 +22,6 @@
             </intent-filter>
         </activity>
 
-
         <service
             android:name=".FCMService"
             android:exported="false">

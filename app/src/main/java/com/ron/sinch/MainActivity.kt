@@ -14,6 +14,7 @@ import com.ron.sinch.databinding.ActivityMainBinding
 import com.ron.sinchcalling.RonSinch
 import com.ron.sinchcalling.models.RonSinchCallResult
 import com.ron.sinchcalling.models.RonSinchUserModel
+import com.ron.sinchcalling.models.UserCallModel
 import java.util.Random
 
 class MainActivity : AppCompatActivity() {
@@ -36,11 +37,20 @@ class MainActivity : AppCompatActivity() {
                     environment = "ocra.api.sinch.com",
                     fcmToken = it,
                     key = "0feeb639-ba6b-45aa-af22-a081e8967bda",
-                    userName = userID ?: ""
+                    userName = "Ronil-$userID" ?: ""
                 )
             )
         }
 
+//        RonSinch(this).signOut(object :PushTokenUnregisterCallback{
+//            override fun onPushTokenUnregistered() {
+//                Log.e("onPushTokenUnregistered", ": ", )
+//            }
+//
+//            override fun onPushTokenUnRegistrationFailed(error: String?) {
+//                Log.e("onPushTokenUnregistered", ":ERROR ->  $error", )
+//            }
+//        })
         yourUserID.text = "Your User ID :$userID"
 
     }
@@ -48,13 +58,21 @@ class MainActivity : AppCompatActivity() {
     private fun initListners() {
         binding.btnVoiceCall.setOnClickListener {
             RonSinch(this).placeVoiceCall(
-                binding.etTargetID.text.toString(),
+                UserCallModel(
+                    binding.etTargetID.text.toString(),
+                    receiverName = "Temp name ${binding.etTargetID.text.toString()}",
+                ),
                 launcher = launcher,
                 seconds = 11
             )
         }
         binding.btnVideoCall.setOnClickListener {
-            RonSinch(this).placeVideoCall(binding.etTargetID.text.toString(), seconds = 111)
+            RonSinch(this).placeVideoCall(
+                UserCallModel(
+                    binding.etTargetID.text.toString(),
+                    receiverName = "chota Don"
+                ), seconds = 111
+            )
         }
     }
 

@@ -21,6 +21,7 @@ import com.ron.sinchcalling.helpers.RonConstants
 import com.ron.sinchcalling.helpers.RonJwt
 import com.ron.sinchcalling.helpers.RonSharedPrefUtils
 import com.ron.sinchcalling.models.RonSinchUserModel
+import com.ron.sinchcalling.models.UserCallModel
 import com.ron.sinchcalling.services.RonSinchService
 import com.sinch.android.rtc.ClientRegistration
 import com.sinch.android.rtc.PushConfiguration
@@ -47,6 +48,7 @@ class RonSinch(private val context: Context) {
         userRegisterCallbacks: UserRegisterCallbacks? = null,
         pushTokenRegisterCallback: PushTokenRegisterCallback? = null
     ) {
+
         preference.setUserModel(model)
 
         UserController.builder().context(context).userId(model.userID).applicationKey(model.key)
@@ -86,10 +88,16 @@ class RonSinch(private val context: Context) {
     fun signOut(
         pushTokenUnregisterCallback: PushTokenUnregisterCallback? = null
     ) {
+
         val model = preference.getUserModel()
         UserController.builder().context(context).applicationKey(model?.key ?: "")
             .userId(model?.userID ?: "")
-            .environmentHost(model?.environment ?: "").build()
+            .environmentHost(model?.environment ?: "")
+            .pushConfiguration(
+                PushConfiguration.fcmPushConfigurationBuilder().senderID(model?.fcmSenderID ?: "")
+                    .registrationToken(model?.fcmToken ?: "").build()
+            )
+            .build()
             .unregisterPushToken(object : PushTokenUnregistrationCallback {
                 override fun onPushTokenUnregistered() {
                     preference.setUserModel(null)
@@ -157,16 +165,17 @@ class RonSinch(private val context: Context) {
 
 
     fun placeVoiceCall(
-        callerID: String,
+        userCallModel: UserCallModel,
         launcher: ActivityResultLauncher<Intent>? = null,
         min: Int? = null,
         seconds: Int? = null
     ) {
         if (preference.getUserModel() != null) {
+            userCallModel.callerName = preference.getUserModel()?.userName
             BackgroundAudioHandler(context).requestAudioFocus()
             val intent = Intent(context, RonSinchCallActivity::class.java).apply {
                 putExtra(RonConstants.Calls.type, RonConstants.Calls.audioCall)
-                putExtra(RonConstants.Calls.callerID, callerID)
+                putExtra(RonConstants.Calls.payload, userCallModel)
                 seconds?.let {
                     putExtra(RonConstants.Calls.seconds, it)
                 }
@@ -187,16 +196,17 @@ class RonSinch(private val context: Context) {
     }
 
     fun placeVideoCall(
-        callerID: String,
+        userCallModel: UserCallModel,
         launcher: ActivityResultLauncher<Intent>? = null,
         min: Int? = null,
         seconds: Int? = null
     ) {
         if (preference.getUserModel() != null) {
+            userCallModel.callerName = preference.getUserModel()?.userName
             BackgroundAudioHandler(context).requestAudioFocus()
             val intent = Intent(context, RonSinchCallActivity::class.java).apply {
                 putExtra(RonConstants.Calls.type, RonConstants.Calls.videoCall)
-                putExtra(RonConstants.Calls.callerID, callerID)
+                putExtra(RonConstants.Calls.payload, userCallModel)
                 seconds?.let {
                     putExtra(RonConstants.Calls.seconds, it)
                 }

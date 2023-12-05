@@ -27,8 +27,8 @@ import com.ron.sinchcalling.helpers.RonConstants
 import com.ron.sinchcalling.helpers.RonNotificationUtils
 import com.ron.sinchcalling.helpers.RonProximitySensor
 import com.ron.sinchcalling.helpers.ronVisible
-import com.ron.sinchcalling.helpers.usernameFromCall
 import com.ron.sinchcalling.models.RonSinchCallResult
+import com.ron.sinchcalling.models.UserCallModel
 import com.ron.sinchcalling.services.RonSinchService
 import com.sinch.android.rtc.SinchClient
 import com.sinch.android.rtc.calling.Call
@@ -53,7 +53,14 @@ internal class RonSinchCallActivity : AppCompatActivity() {
     private var speakerEnabled = false
     private var onMute = false
     private var actionButtons: Boolean? = null
-    private val callerID by lazy { intent.getStringExtra(RonConstants.Calls.callerID) }
+    private val userCallModel by lazy {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            intent.getSerializableExtra(RonConstants.Calls.payload, UserCallModel::class.java)
+        } else {
+            intent.getSerializableExtra(RonConstants.Calls.payload) as UserCallModel
+        }
+    }
+    private val callerID by lazy { userCallModel?.callerID }
     private val caller by lazy { intent.getBooleanExtra(RonConstants.Calls.caller, false) }
     private var sinchClient: SinchClient? = null
     private var ongoingCall: Call? = null
@@ -151,20 +158,38 @@ internal class RonSinchCallActivity : AppCompatActivity() {
             binding.actionsLayout.ronVisible(true)
             binding.bottomLayout.ronVisible(false)
             binding.callState.text = "Dialling call"
-            binding.callerName.text = it.usernameFromCall()
+            binding.callerName.text = userCallModel?.receiverName
             when (callType) {
                 RonConstants.Calls.videoCall -> {
-                    ongoingCall = sinchClient?.callController?.callUser(it, MediaConstraints(true))
+                    ongoingCall = sinchClient?.callController?.callUser(
+                        it,
+                        MediaConstraints(true),
+                        HashMap<String, String>().also {
+                            it["receiverName"] = userCallModel?.receiverName ?: ""
+                            it["callerName"] = userCallModel?.callerName ?: ""
+                        })
                     ongoingCall?.addCallListener(ongoingVideoCallListener)
                 }
 
                 RonConstants.Calls.audioCall -> {
-                    ongoingCall = sinchClient?.callController?.callUser(it, MediaConstraints(false))
+                    ongoingCall = sinchClient?.callController?.callUser(
+                        it,
+                        MediaConstraints(false),
+                        HashMap<String, String>().also {
+                            it["receiverName"] = userCallModel?.receiverName ?: ""
+                            it["callerName"] = userCallModel?.callerName ?: ""
+                        })
                     ongoingCall?.addCallListener(ongoingVoiceCallListener)
                 }
 
                 else -> {
-                    ongoingCall = sinchClient?.callController?.callUser(it, MediaConstraints(false))
+                    ongoingCall = sinchClient?.callController?.callUser(
+                        it,
+                        MediaConstraints(false),
+                        HashMap<String, String>().also {
+                            it["receiverName"] = userCallModel?.receiverName ?: ""
+                            it["callerName"] = userCallModel?.callerName ?: ""
+                        })
                     ongoingCall?.addCallListener(ongoingVoiceCallListener)
                 }
             }
@@ -188,7 +213,7 @@ internal class RonSinchCallActivity : AppCompatActivity() {
         } else if (actionButtons == false) {
             rejectCall()
         }
-        binding.callerName.text = ongoingCall?.remoteUserId?.usernameFromCall()
+        binding.callerName.text = userCallModel?.callerName
         binding.callState.text = callType
         if (ongoingCall?.details?.isVideoOffered == true) {
             binding.audioInfoLayout.ronVisible(true)
@@ -254,6 +279,7 @@ internal class RonSinchCallActivity : AppCompatActivity() {
         binding.callState.text = getString(R.string.call_ended)
         screenManager.releaseWakeLock()
         RonNotificationUtils.stopRingTone()
+        stopService(Intent(this, RonSinchService::class.java))
         setResult(Activity.RESULT_OK, Intent().also {
             it.putExtra("result", resultModel)
         })
@@ -301,7 +327,7 @@ internal class RonSinchCallActivity : AppCompatActivity() {
 
     private val ongoingVoiceCallListener = object : CallListener {
         override fun onCallProgressing(p0: Call) {
-            binding.callerName.text = "${ongoingCall?.remoteUserId?.usernameFromCall()}"
+//            binding.callerName.text = "${ongoingCall?.remoteUserId?.usernameFromCall()}"
             binding.callState.text = getString(R.string.ringing)
             binding.duration.ronVisible(false)
 
@@ -327,7 +353,7 @@ internal class RonSinchCallActivity : AppCompatActivity() {
 
     private val ongoingVideoCallListener = object : VideoCallListener {
         override fun onCallProgressing(p0: Call) {
-            binding.callerName.text = "${ongoingCall?.remoteUserId?.usernameFromCall()}"
+//            binding.callerName.text = "${ongoingCall?.remoteUserId?.usernameFromCall()}"
             binding.audioInfoLayout.ronVisible(true)
             binding.callState.text = getString(R.string.ringing)
         }

@@ -1,18 +1,21 @@
 package com.ron.sinchcalling.helpers
 
-import android.content.Context
-import android.media.AudioManager
-import android.media.AudioManager.OnAudioFocusChangeListener
+import android.util.Log
 import android.view.View
 
 internal fun String.usernameFromCall(): String {
+    Log.e("usernameFromCall", ": $this" )
     val name =
         try {
             val tempList = this.split("|")
             if (tempList.isEmpty()) {
                 this
             } else {
-                tempList[0]
+                if (tempList.size > 1) {
+                    tempList[1]
+                } else {
+                    tempList[0]
+                }
             }
 
         } catch (_: Exception) {

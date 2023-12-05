@@ -13,6 +13,7 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <application>
+
         <activity
             android:name=".activities.RonSinchCallActivity"
             android:configChanges="orientation|keyboardHidden|screenSize"

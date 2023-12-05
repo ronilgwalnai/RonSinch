@@ -14,6 +14,7 @@ import com.ron.sinchcalling.helpers.RonJwt
 import com.ron.sinchcalling.helpers.RonNotificationUtils
 import com.ron.sinchcalling.helpers.RonSharedPrefUtils
 import com.ron.sinchcalling.models.RonSinchUserModel
+import com.ron.sinchcalling.models.UserCallModel
 import com.sinch.android.rtc.ClientRegistration
 import com.sinch.android.rtc.PushConfiguration
 import com.sinch.android.rtc.SinchClient
@@ -128,6 +129,7 @@ internal class RonSinchService : Service() {
     private val callController = object : CallControllerListener {
         override fun onIncomingCall(callController: CallController, call: Call) {
             RonNotificationUtils.stopRingTone()
+            val data = call.headers
             val notifications = RonNotificationUtils(this@RonSinchService)
             RonNotificationUtils.playRingTone()
             val callType = if (call.details.isVideoOffered) {
@@ -136,11 +138,19 @@ internal class RonSinchService : Service() {
                 RonConstants.Calls.audioCall
 
             }
+            val userCallModel = UserCallModel(
+                call.callId,
+                receiverName = data["receiverName"],
+                callerName = data["callerName"]
+            )
             val mainActivityIntent =
                 Intent(this@RonSinchService, RonSinchCallActivity::class.java).apply {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                    putExtra(RonConstants.Calls.callerID, call.callId)
+                    putExtra(
+                        RonConstants.Calls.payload,
+                        userCallModel
+                    )
                     putExtra(RonConstants.Calls.caller, false)
                     putExtra(RonConstants.Calls.type, callType)
 
@@ -148,7 +158,7 @@ internal class RonSinchService : Service() {
             if (systemVersionDisallowsExplicitActivityStart && !checkIfInForeground()) {
                 notifications.createNotification(
                     call,
-                    mainActivityIntent
+                    mainActivityIntent, userCallModel
                 )
             } else {
                 startActivity(mainActivityIntent)

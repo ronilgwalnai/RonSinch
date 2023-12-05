@@ -12,6 +12,7 @@ import android.media.RingtoneManager
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.ron.sinchcalling.R
+import com.ron.sinchcalling.models.UserCallModel
 import com.sinch.android.rtc.calling.Call
 import java.util.Date
 
@@ -28,7 +29,8 @@ internal class RonNotificationUtils(private val context: Context) {
     private val notificationManager: NotificationManager get() = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     fun createNotification(
         call: Call,
-        baseIntent: Intent
+        baseIntent: Intent,
+        userCallModel: UserCallModel
     ): Notification {
         val model = RonSharedPrefUtils(context).getUserModel()
         val logo: Int
@@ -49,7 +51,7 @@ internal class RonNotificationUtils(private val context: Context) {
             this.context.packageName + RonConstants.NotificationConstants.DEF_CHANNEL_ID
         )
             .setContentTitle(title)
-            .setContentText(call.remoteUserId.usernameFromCall())
+            .setContentText(userCallModel.callerName)
             .setSmallIcon(logo)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setCategory(NotificationCompat.CATEGORY_CALL).setContentIntent(
