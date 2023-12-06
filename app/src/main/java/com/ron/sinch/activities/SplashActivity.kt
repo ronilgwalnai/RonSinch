@@ -1,4 +1,4 @@
-package com.ron.sinch
+package com.ron.sinch.activities
 
 import android.annotation.SuppressLint
 import android.content.Intent
