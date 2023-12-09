@@ -1,13 +1,13 @@
 import java.net.URI
 
+include(":SinchCalling")
+
 
 pluginManagement {
     repositories {
         google()
         mavenCentral()
         gradlePluginPortal()
-        mavenLocal()            // << --- ADD This
-
     }
 }
 dependencyResolutionManagement {
@@ -25,6 +25,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Ron-Sinch"
 include(":app")
-include(":SinchCalling")
-
  
