@@ -6,6 +6,8 @@ pluginManagement {
         google()
         mavenCentral()
         gradlePluginPortal()
+        mavenLocal()            // << --- ADD This
+
     }
 }
 dependencyResolutionManagement {
@@ -23,6 +25,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "Ron-Sinch"
 include(":app")
-//include(":SinchCalling")
+include(":SinchCalling")
 
  
