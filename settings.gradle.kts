@@ -1,8 +1,5 @@
 import java.net.URI
 
-include(":SinchCalling")
-
-
 pluginManagement {
     repositories {
         google()
@@ -25,4 +22,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "Ron-Sinch"
 include(":app")
+//include(":SinchCalling")
+
  
