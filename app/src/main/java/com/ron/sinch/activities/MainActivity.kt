@@ -1,14 +1,21 @@
 package com.ron.sinch.activities
 
 import android.app.Activity
+import android.content.Intent
 import android.content.SharedPreferences
+import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.ron.sinch.databinding.ActivityMainBinding
+import com.ron.sinchcalling.RonSinch
+import com.ron.sinchcalling.callbacks.PushTokenUnregisterCallback
+import com.ron.sinchcalling.models.RonSinchCallResult
+import com.ron.sinchcalling.models.UserCallModel
 
 class MainActivity : AppCompatActivity() {
     private var sp: SharedPreferences? = null
@@ -27,14 +34,14 @@ class MainActivity : AppCompatActivity() {
 
     private fun initListeners() {
         binding.btnVoiceCall.setOnClickListener {
-//            RonSinch(this).placeVoiceCall(
-//                UserCallModel(
-//                    binding.etTargetID.text.toString(),
-//                    receiverName = binding.etUserName.text.toString(),
-//                ),
-//                launcher = launcher,
-//                seconds = 11
-//            )
+            RonSinch(this).placeVoiceCall(
+                UserCallModel(
+                    binding.etTargetID.text.toString(),
+                    receiverName = binding.etUserName.text.toString(),
+                ),
+                launcher = launcher,
+                seconds = 11
+            )
         }
         binding.btnVideoCall.setOnClickListener {
             if (binding.etTargetID.text.toString().length < 5) {
@@ -53,12 +60,12 @@ class MainActivity : AppCompatActivity() {
                 ).show()
                 return@setOnClickListener
             }
-//            RonSinch(this).placeVideoCall(
-//                UserCallModel(
-//                    binding.etTargetID.text.toString(),
-//                    receiverName = binding.etUserName.text.toString()
-//                ), seconds = 111
-//            )
+            RonSinch(this).placeVideoCall(
+                UserCallModel(
+                    binding.etTargetID.text.toString(),
+                    receiverName = binding.etUserName.text.toString()
+                ), seconds = 111
+            )
         }
 
         binding.logout.setOnClickListener {
@@ -71,36 +78,36 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun logoutFromSinch() {
-//        RonSinch(this).signOut(object : PushTokenUnregisterCallback {
-//            override fun onPushTokenUnregistered() {
-//                Toast.makeText(
-//                    this@MainActivity,
-//                    "User Logged out Successfully",
-//                    Toast.LENGTH_SHORT
-//                ).show()
-//                sp?.edit()?.clear()?.apply()
-//                startActivity(Intent(this@MainActivity, SplashActivity::class.java))
-//                finishAffinity()
-//            }
-//
-//            override fun onPushTokenUnRegistrationFailed(error: String?) {
-//                Toast.makeText(this@MainActivity, error, Toast.LENGTH_SHORT).show()
-//                Log.e("onPushTokenUnregistered", ":ERROR ->  $error")
-//            }
-//        })
+        RonSinch(this).signOut(object : PushTokenUnregisterCallback {
+            override fun onPushTokenUnregistered() {
+                Toast.makeText(
+                    this@MainActivity,
+                    "User Logged out Successfully",
+                    Toast.LENGTH_SHORT
+                ).show()
+                sp?.edit()?.clear()?.apply()
+                startActivity(Intent(this@MainActivity, SplashActivity::class.java))
+                finishAffinity()
+            }
+
+            override fun onPushTokenUnRegistrationFailed(error: String?) {
+                Toast.makeText(this@MainActivity, error, Toast.LENGTH_SHORT).show()
+                Log.e("onPushTokenUnregistered", ":ERROR ->  $error")
+            }
+        })
     }
 
     private val launcher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result: ActivityResult ->
         if (result.resultCode == Activity.RESULT_OK) {
-//            val data = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-//                result.data?.getSerializableExtra("result", RonSinchCallResult::class.java)
-//            } else {
-//                result.data?.getSerializableExtra("result") as RonSinchCallResult
-//            }
+            val data = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                result.data?.getSerializableExtra("result", RonSinchCallResult::class.java)
+            } else {
+                result.data?.getSerializableExtra("result") as RonSinchCallResult
+            }
 
-//            Log.e("RonSinchCallResul", ": $data")
+            Log.e("RonSinchCallResul", ": $data")
         }
 
 

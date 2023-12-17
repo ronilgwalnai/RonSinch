@@ -1,13 +1,18 @@
 package com.ron.sinch.activities
 
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import com.google.firebase.messaging.FirebaseMessaging
 import com.ron.sinch.databinding.ActivityRegisterBinding
 import com.ron.sinch.databinding.ProgressDialogueBinding
+import com.ron.sinchcalling.RonSinch
+import com.ron.sinchcalling.callbacks.UserRegisterCallbacks
+import com.ron.sinchcalling.models.RonSinchUserModel
 
 class RegisterActivity : AppCompatActivity() {
     private val binding by lazy { ActivityRegisterBinding.inflate(layoutInflater) }
@@ -44,39 +49,39 @@ class RegisterActivity : AppCompatActivity() {
     }
 
     private fun registerUser(userId: String, userName: String) {
-//        progressBar.show()
-//        FirebaseMessaging.getInstance().token.addOnSuccessListener {
-//            RonSinch(this).registerUser(
-//                RonSinchUserModel(
-//                    secret = "yKEcNvop6UaLec7WIJii5g==",
-//                    userID = userId,
-//                    fcmSenderID = "873551401245",
-//                    environment = "ocra.api.sinch.com",
-//                    fcmToken = it,
-//                    key = "0feeb639-ba6b-45aa-af22-a081e8967bda",
-//                    userName = userName
-//                ), object : UserRegisterCallbacks {
-//                    override fun onUserRegistered() {
-//                        val sp =
-//                          getSharedPreferences(this@RegisterActivity.packageName, MODE_PRIVATE)
-//                        sp.edit().putString("userId", userId).apply()
-//                        Toast.makeText(
-//                            this@RegisterActivity,
-//                            "User Registration Successful",
-//                            Toast.LENGTH_SHORT
-//                        ).show()
-//                        progressBar.dismiss()
-//                        startActivity(Intent(this@RegisterActivity, MainActivity::class.java))
-//                        finishAffinity()
-//                    }
-//
-//                    override fun onUserRegistrationFailed(error: String?) {
-//                        Toast.makeText(this@RegisterActivity, "$error", Toast.LENGTH_SHORT).show()
-//                        progressBar.dismiss()
-//                    }
-//                }
-//            )
-//        }
+        progressBar.show()
+        FirebaseMessaging.getInstance().token.addOnSuccessListener {
+            RonSinch(this).registerUser(
+                RonSinchUserModel(
+                    secret = "yKEcNvop6UaLec7WIJii5g==",
+                    userID = userId,
+                    fcmSenderID = "873551401245",
+                    environment = "ocra.api.sinch.com",
+                    fcmToken = it,
+                    key = "0feeb639-ba6b-45aa-af22-a081e8967bda",
+                    userName = userName
+                ), object : UserRegisterCallbacks {
+                    override fun onUserRegistered() {
+                        val sp =
+                          getSharedPreferences(this@RegisterActivity.packageName, MODE_PRIVATE)
+                        sp.edit().putString("userId", userId).apply()
+                        Toast.makeText(
+                            this@RegisterActivity,
+                            "User Registration Successful",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                        progressBar.dismiss()
+                        startActivity(Intent(this@RegisterActivity, MainActivity::class.java))
+                        finishAffinity()
+                    }
+
+                    override fun onUserRegistrationFailed(error: String?) {
+                        Toast.makeText(this@RegisterActivity, "$error", Toast.LENGTH_SHORT).show()
+                        progressBar.dismiss()
+                    }
+                }
+            )
+        }
 
     }
 }
